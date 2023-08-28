@@ -9,8 +9,10 @@
 #include <map>
 #include <vector>
 
-#define DEBUG_OPCODE_PARTS 1
-#define DEBUG_MACHINE_CODE 1
+#include "Assembler_ch8.h"
+
+#define DEBUG_OPCODE_PARTS 0
+#define DEBUG_MACHINE_CODE 0
 
 /*
 		ROMB;
@@ -104,6 +106,20 @@ std::string toHex(std::string dec) {
 	std::stringstream ss;
 	ss << std::hex << std::uppercase << dec;
 	return ss.str();
+}
+
+bool isStrEmpty(std::string str) {
+	for (size_t i = 0; i < str.length(); i++) {
+		if (str[i] != ' ') {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+void printError(std::string message) {
+	std::cout << "ERROR : " << message << "\n";
 }
 
 std::string combine(std::string hexOpcode, std::string hexPart) {
@@ -244,6 +260,33 @@ int writeCharset_toROM(std::ifstream* file) {
 	}
 }
 
+bool isInRange(std::string line) {
+
+	//line = "24,67,250,255"
+	
+	std::vector<std::string> numbers;
+
+	// Split the string by comma
+	std::istringstream ss(line);
+	std::string token;
+	while (std::getline(ss, token, ',')) {
+		numbers.push_back(token);
+	}
+
+	// Check if each number is in the range 0 to 255
+	for (const std::string& numStr : numbers) {
+
+		int num = std::stoi(numStr);
+		if (num < 0 || num > 255) {
+			return false;
+		}
+
+	}
+		
+	//check for range
+	return true;
+}
+
 int writeVariable_toROM(std::ifstream* file) {
 	//open .och8 file
 	std::ofstream outputFile("Source.och8", std::ios::app);
@@ -255,7 +298,6 @@ int writeVariable_toROM(std::ifstream* file) {
 	}
 	else {
 
-		int lineNumber = 0;
 		std::string line;
 		size_t blankLineIndex;
 
@@ -279,44 +321,39 @@ int writeVariable_toROM(std::ifstream* file) {
 			if (line == "VARE") {
 				break;
 			}
-			else {
-
-				//get first char index of line str
+			else{
 				blankLineIndex = line.find_first_not_of(' ') + 1;
 
-				while (blankLineIndex < line.length()) {
-
-					outputFile << line.substr(blankLineIndex, 4) << ",";
-
-					lineNumber++;
-					blankLineIndex += 5;
-
-					lineSlider++;
-
-					ramUsed++;
-
-					if (lineSlider == 5) {
-						lineSlider = 0;
-						outputFile << "\n";
-					}
+				//check number boundries 0<= x <= 0xff
+				if (!isInRange(line.substr(blankLineIndex, line.length() - blankLineIndex))) {
+					printError("variable size is big or small LINE = " + line.substr(blankLineIndex, line.length() - blankLineIndex));
+					return -1;
 				}
+
+
+				outputFile << line.substr(blankLineIndex,line.length() - blankLineIndex) << ",";
+				ramUsed++;
+
+				lineSlider++;
+
+				if (lineSlider == 5) {
+					lineSlider = 0;
+					outputFile << "\n";
+				}
+				
 			}
 		}
 
 		if (line != "VARE") {
-			std::cout << "ERROR: End of char set undefined ! \n";
+			std::cout << "ERROR: End of VAR SECTION undefined ! \n";
 			return -1;
 		}
 
 		outputFile << "VARE\n";
 		outputFile.close();
 
-		return lineNumber;
+		return 0;
 	}
-}
-
-void printError(std::string message) {
-	std::cout << "ERROR : " << message << "\n";
 }
 
 std::pair<std::string,std::string> getParts(std::string line) {
@@ -368,34 +405,22 @@ void writeMachineCode(std::ofstream* outputFile,std::pair<std::string, std::stri
 	else{
 		std::string machineCode = combine(opCodes[parts.first], parts.second.substr(1,3));
 		
-		#ifdef DEBUG_MACHINE_CODE
+		#ifndef DEBUG_MACHINE_CODE
 			std::cout << "Machine code = " << machineCode << "\n";
 		#endif // DEBUG_MACHINE_CODE
 
 		*outputFile << machineCode.substr(0, 4) << ",0x" << machineCode.substr(4, 2)<<",";
-		
-		
 			
 	}
 
 	lineSlider++;
-	std::cout << "lineSlider " << lineSlider << "\n";
+	
 	if (lineSlider == 5) {
 		lineSlider = 0;
 		*outputFile << "\n";
 	}
 
 	ramUsed += 2;
-}
-
-bool isStrEmpty(std::string str) {
-	for (size_t i = 0; i < str.length(); i++) {
-		if (str[i] != ' ') {			
-			return false;
-		}
-	}
-
-	return true;
 }
 
 int writeCode_toROM(std::ifstream* file) {
@@ -477,19 +502,9 @@ int writeCode_toROM(std::ifstream* file) {
 
 int main(int argc, char* argv[]) {
 
-	std::string memonic;
-
-	int lineIndex = 0;
-
-	
-
-	std::vector<std::string> output_och8(0xfff);
-
-	int lineNumber = 0;
-
 	std::cout << "writed by Onur Yucel in 13.08.23 \n";
 	std::cout << "===============================" << "\n";
-	std::cout << "Welcome to Chip8 Assembler V0.3" << "\n";
+	std::cout << "Welcome to Chip8 Assembler V0.5" << "\n";
 	std::cout << "===============================" << "\n";
 	
 
@@ -498,16 +513,24 @@ int main(int argc, char* argv[]) {
 	if (!sourceFile.is_open()) {
 		std::cout << "ERROR : File couldnt opened \n";
 	}
-	else{
-		writeCharset_toROM(&sourceFile);
-		writeVariable_toROM(&sourceFile);
+	else {
+
+		if (writeCharset_toROM(&sourceFile) == -1) {
+			sourceFile.close();
+			return -1;
+		}
+
+		if (writeVariable_toROM(&sourceFile) == -1) {
+			sourceFile.close();
+			return -1;
+		}
 		writeCode_toROM(&sourceFile);
 	}
 
 
 	sourceFile.close();
 
-	std::cout << ramUsed << " RAM bytes used " << 0xfff - ramUsed << " Left bytes " << "\n";
+	std::cout << ramUsed << " RAM bytes used " << 0xfff - ramUsed << " bytes left" << "\n";
 }
 
 	/*
