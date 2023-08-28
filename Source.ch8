@@ -1,0 +1,25 @@
+
+ROMB
+	
+	0x0f,0x0f
+	0xEE,0xFF
+	0x02,0x34,0xDD
+
+ROME
+
+VARB
+	23,56
+VARE
+
+CODEB
+   
+ CLS
+ LDI #023
+
+ JMP #005
+ LDI #002
+ OR #fd
+ CFR #f
+
+ RET
+CODEF
