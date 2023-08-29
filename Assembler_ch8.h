@@ -1,6 +1,10 @@
 #pragma once
 
+#include<iostream>
+#include<fstream>
+
 #include <map>
+#include <vector>
 
 #include "utils/Radix.h"
 
@@ -8,10 +12,33 @@ class Assembler_ch8 {
 
 public:
 	Assembler_ch8(std::string sourcePath, std::string outputPath);
+	int run();
+
+	bool isStrEmpty(std::string str);
 
 private:
 	std::string sourcePath;
 	std::string outputPath;
+
+	size_t ramUsed = 0;
+	size_t lineNumber = 0;
+
+	std::ofstream outputFile;
+	std::ifstream sourceFile;
+
+	char lineSlider = 0;
+
+	int writeCharset_toROM();
+	int writeVariable_toROM();
+	int writeCode_toROM();
+	
+	bool isInRange(std::string line);
+	void printError(std::string message);
+		
+	std::pair<std::string, std::string> getParts(std::string line);
+	std::string combine(std::string hexOpcode, std::string hexPart);
+
+	void writeMachineCode(std::ofstream* outputFile, std::pair<std::string, std::string> parts);
 
 	std::map<std::string, std::string> opCodes = {
 
@@ -42,12 +69,3 @@ private:
 	};
 	
 };
-
-Assembler_ch8::Assembler_ch8(std::string sourcePath, std::string outputPath) {
-
-	this->sourcePath = sourcePath;
-	this->outputPath = outputPath;
-
-	//TODO check file paths are valid
-	
-}
