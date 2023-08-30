@@ -352,7 +352,7 @@ int Assembler_ch8::run() {
 
 	std::cout << "writed by Onur Yucel in 13.08.23 \n";
 	std::cout << "===============================" << "\n";
-	std::cout << "Welcome to Chip8 Assembler V0.5" << "\n";
+	std::cout << "Welcome to Chip8 Assembler V0.6" << "\n";
 	std::cout << "===============================" << "\n";
 
 	outputFile.open(outputPath, std::ios::out);
